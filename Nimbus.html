@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Nimbus Playground</title>
+<style>
+:root{--bg:#f4f7fb;--panel:#fff;--ink:#1c2433;--mute:#6b7690;--acc:#4f7cff;--line:#dbe3f0;--out:#eef3fb;--err:#c0392b;
+box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#0e1424;--panel:#161d33;--ink:#e6ebf7;--mute:#8a96b5;--acc:#7da2ff;--line:#26304f;--out:#0b1020;--err:#ff7b6b}}
+:root[data-theme="dark"]{--bg:#0e1424;--panel:#161d33;--ink:#e6ebf7;--mute:#8a96b5;--acc:#7da2ff;--line:#26304f;--out:#0b1020;--err:#ff7b6b}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:17px/1.55 system-ui,-apple-system,"Segoe UI",sans-serif}
+main{max-width:1180px;margin:0 auto;padding:28px 20px 40px}
+h1{margin:0;font-size:38px;letter-spacing:.5px}h1 span{color:var(--acc)}
+p.sub{margin:2px 0 16px;color:var(--mute)}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:12px;overflow:hidden;margin-bottom:14px}
+.bar{display:flex;gap:10px;align-items:center;padding:12px 16px;border-bottom:1px solid var(--line);color:var(--mute);font-size:15px;flex-wrap:wrap}
+.bar b{color:var(--ink);font-weight:600;margin-right:auto}
+button,select{font:inherit;font-size:15px;border:1px solid var(--line);background:var(--bg);color:var(--ink);border-radius:8px;padding:6px 10px}
+button.run{background:var(--acc);color:#fff;border-color:var(--acc);font-weight:600;cursor:pointer}
+textarea{display:block;width:100%;min-height:400px;border:0;outline:0;resize:vertical;padding:16px;background:var(--panel);color:var(--ink);font:16px/1.55 ui-monospace,Menlo,Consolas,monospace}
+pre{margin:0;padding:12px;min-height:220px;padding:16px;background:var(--out);font:16px/1.55 ui-monospace,Menlo,Consolas,monospace;white-space:pre-wrap;word-break:break-word}
+pre.err{color:var(--err)}
+.ref{overflow-x:auto;padding:16px;font-size:15px;line-height:1.9;color:var(--mute)}
+.ref code{color:var(--ink);background:var(--out);padding:1px 5px;border-radius:4px}
+#ref{padding:8px 20px 24px}
+#ref h3{margin:28px 0 10px;font-size:13px;letter-spacing:1.5px;text-transform:uppercase;color:var(--acc)}
+.cmd{display:grid;grid-template-columns:minmax(220px,1.1fr) 2fr minmax(180px,1.2fr);gap:8px 28px;padding:14px 0;border-top:1px solid var(--line);align-items:start}
+.cmd code{font:15px/1.5 ui-monospace,Menlo,Consolas,monospace;color:var(--ink);word-break:break-word}
+.cmd .sig{color:var(--acc);font-weight:600}
+.cmd .d{color:var(--mute);line-height:1.6}
+.cmd .ex{background:var(--out);padding:6px 10px;border-radius:6px}
+.cmd .ex i{display:block;font-style:normal;color:var(--mute);margin-top:2px}
+#note{margin-left:8px;font-size:13px}
+@media(max-width:760px){.cmd{grid-template-columns:1fr;gap:6px}}
+</style></head><body><main>
+<h1><span>☁</span> Nimbus</h1>
+<p class="sub">A functional, esoteric language with a few AI-flavored tricks. Files end in <code>.nimbus</code>.</p>
+<div class="card">
+<div class="bar"><b id="fname">main.nimbus</b><span id="note"></span>
+<select id="ex" aria-label="Examples"></select>
+<input type="file" id="file" accept=".nimbus,.txt,text/plain" hidden><button id="open">Open…</button><button id="save">Save</button><button class="run" id="run">Run ▶</button></div>
+<textarea id="src" spellcheck="false" aria-label="Nimbus source"></textarea></div>
+<div class="card"><div class="bar"><b>Output</b><span>Ctrl/⌘ + Enter to run</span></div><pre id="out"></pre></div>
+<div class="card"><div class="bar"><b>Command reference</b><span>Everything is an expression in parentheses; <code>[a b]</code> is a list</span></div><div id="ref"></div></div>
+<script>
+const EX={
+"hello":`; hello.nimbus
+(thunder "Hello, sky")`,
+"pipeline":`; squares of evens, summed
+(cloud nums (span 1 11))
+(thunder (flow nums
+  (drift (l) (sift (drift (x) (= (% x 2) 0)) l))
+  (drift (l) (gather (drift (x) (* x x)) l))
+  (drift (l) (condense + 0 l))))`,
+"higher-order":`; apply a function twice, twice
+(cloud twice (drift (f) (drift (x) (f (f x)))))
+(cloud inc (drift (x) (+ x 1)))
+(thunder ((twice (twice inc)) 0))
+(thunder (gather (twice (drift (x) (* x 3))) [1 2 3]))`,
+"neuron":`; a single artificial neuron
+(cloud w [0.5 -0.2 0.8])
+(thunder (neuron w [1 2 3] 0.1))
+(thunder (neuron w [0 0 0] 0))`,
+"dream":`; ask the tiny oracle
+(thunder (dream "the storm" 14))
+(thunder (dream "a cloud" 10))`,
+"fizzbuzz":`(cloud (fizz n)
+  (rain (= (% n 15) 0) "FizzBuzz"
+  (rain (= (% n 3) 0) "Fizz"
+  (rain (= (% n 5) 0) "Buzz" n))))
+(gather (drift (n) (thunder (fizz n))) (span 1 21))`,
+"fibonacci":`; naive recursion, shown as a list
+(cloud (fib n) (rain (< n 2) n (+ (fib (- n 1)) (fib (- n 2)))))
+(thunder (gather fib (span 0 15)))`,
+"quicksort":`; functional quicksort
+(cloud (qsort l)
+  (rain (< (size l) 2) l
+    (weave
+      (cloud p (head l))
+      (cloud rest (tail l))
+      (append
+        (qsort (sift (drift (x) (< x p)) rest))
+        (join p (qsort (sift (drift (x) (>= x p)) rest)))))))
+(thunder (qsort [5 3 9 1 7 2 8 3 6]))`,
+"primes":`(cloud (divides? d n) (= (% n d) 0))
+(cloud (prime n)
+  (rain (< n 2) no
+    (= (size (sift (drift (d) (divides? d n)) (span 2 n))) 0)))
+(thunder (sift prime (span 1 80)))`,
+"collatz":`; the 3n+1 problem
+(cloud (collatz n steps)
+  (rain (= n 1) steps
+    (rain (= (% n 2) 0)
+      (collatz (/ n 2) (+ steps 1))
+      (collatz (+ (* 3 n) 1) (+ steps 1)))))
+(thunder (weld "27 takes " (collatz 27 0) " steps"))
+(thunder (gather (drift (n) (collatz n 0)) (span 1 15)))`,
+"church numerals":`; numbers made only of functions
+(cloud zero (drift (f) (drift (x) x)))
+(cloud (succ n) (drift (f) (drift (x) (f ((n f) x)))))
+(cloud (add a b) (drift (f) (drift (x) ((a f) ((b f) x)))))
+(cloud (mul a b) (drift (f) (a (b f))))
+(cloud (unchurch n) ((n (drift (k) (+ k 1))) 0))
+(cloud three (succ (succ (succ zero))))
+(thunder (unchurch (add three three)))
+(thunder (unchurch (mul three three)))`,
+"neural xor":`; a hand-wired two-layer network solves XOR
+(cloud (xor a b)
+  (weave
+    (cloud h1 (neuron [20 20] [a b] -10))
+    (cloud h2 (neuron [20 20] [a b] -30))
+    (neuron [20 -20] [h1 h2] -10)))
+(thunder (gather
+  (drift (p) (round (xor (head p) (nth p 1))))
+  [[0 0] [0 1] [1 0] [1 1]]))`,
+"mandelbrot":`; ASCII fractal, pure recursion
+(cloud (iter cr ci zr zi n)
+  (rain (= n 15) n
+    (rain (> (+ (* zr zr) (* zi zi)) 4) n
+      (iter cr ci (+ (- (* zr zr) (* zi zi)) cr) (+ (* 2 zr zi) ci) (+ n 1)))))
+(cloud (glyph n)
+  (rain (= n 15) "█" (rain (> n 5) "▒" (rain (> n 2) "░" " "))))
+(cloud (row y)
+  (condense weld ""
+    (gather (drift (x) (glyph (iter (- (/ x 15) 2.2) (- (/ y 9) 1) 0 0 0))) (span 0 46))))
+(gather (drift (y) (thunder (row y))) (span 0 19))`,
+"storm poem":`; five dreams from the oracle
+(gather (drift (i) (thunder (dream "the" 8))) (span 0 5))`};
+const sel=document.getElementById('ex'),src=document.getElementById('src'),out=document.getElementById('out');
+for(const k in EX){const o=document.createElement('option');o.value=k;o.textContent=k;sel.appendChild(o)}
+sel.onchange=()=>{src.value=EX[sel.value];run()};
+const tok=s=>(s.match(/"(?:[^"\\]|\\.)*"|;[^\n]*|[()\[\]]|[^\s()\[\]";]+/g)||[]).filter(t=>t[0]!==';');
+function parse(ts){let i=0;
+function rd(){const t=ts[i++];if(t===undefined)throw Error('unexpected end of input');
+if(t==='('||t==='['){const c=t==='('?')':']',l=[];while(ts[i]!==c){if(i>=ts.length)throw Error('missing '+c);l.push(rd())}i++;return t==='['?[{s:'mist'},...l]:l}
+if(t===')'||t===']')throw Error('unexpected '+t);
+if(t[0]==='"')return JSON.parse(t);
+if(!isNaN(t))return +t;return{s:t}}
+const o=[];while(i<ts.length)o.push(rd());return o}
+class Env{constructor(p){this.m=new Map();this.p=p}
+get(k){for(let e=this;e;e=e.p)if(e.m.has(k))return e.m.get(k);throw Error('unbound name: '+k)}
+set(k,v){this.m.set(k,v)}}
+let steps=0;
+const seq=(b,env)=>{let r=null;for(const x of b)r=ev(x,env);return r};
+function ev(x,env){
+if(++steps>2000000)throw Error('too many steps (infinite loop?)');
+if(typeof x==='number'||typeof x==='string')return x;
+if(x&&x.s!==undefined)return env.get(x.s);
+if(!Array.isArray(x)||!x.length)return null;
+const h=x[0]&&x[0].s;
+if(h==='cloud'){if(Array.isArray(x[1])){const[n,...ps]=x[1];const f=mk(ps,x.slice(2),env);env.set(n.s,f);return f}
+const v=ev(x[2],env);env.set(x[1].s,v);return v}
+if(h==='drift')return mk(x[1],x.slice(2),env);
+if(h==='rain'){const c=ev(x[1],env);return c!==false&&c!==null?ev(x[2],env):(x.length>3?ev(x[3],env):null)}
+if(h==='weave')return seq(x.slice(1),new Env(env));
+if(h==='flow'){let v=ev(x[1],env);for(const f of x.slice(2))v=call(ev(f,env),[v]);return v}
+return call(ev(x[0],env),x.slice(1).map(a=>ev(a,env)))}
+function mk(ps,body,env){return(...a)=>{const e=new Env(env);ps.forEach((p,i)=>e.set(p.s,a[i]));return seq(body,e)}}
+function call(f,a){if(typeof f!=='function')throw Error('not callable: '+show(f));return f(...a)}
+function show(v,top){if(v===null)return'void';if(v===true)return'yes';if(v===false)return'no';
+if(typeof v==='string')return top?v:JSON.stringify(v);
+if(Array.isArray(v))return'['+v.map(e=>show(e)).join(' ')+']';
+if(typeof v==='function')return'<drift>';return String(v)}
+const CORPUS="the cloud drifts over the quiet hills and the storm gathers in the east while the rain falls on the sleeping city the wind carries the cloud over the sea and the sea dreams of thunder the thunder wakes the hills and the rain forgets the sky a cloud is a dream the wind has not finished the storm remembers the sea and the sky is a quiet machine".split(" ");
+const chain={};for(let i=0;i<CORPUS.length-1;i++)(chain[CORPUS[i]]??=[]).push(CORPUS[i+1]);
+const pick=a=>a[Math.floor(Math.random()*a.length)];
+function dream(seed,n=12){const ws=String(seed).toLowerCase().split(/\s+/);let w=ws.reverse().find(x=>chain[x])||pick(Object.keys(chain));
+const o=String(seed).trim()?[String(seed).trim()]:[];for(let i=0;i<n;i++){w=pick(chain[w]||Object.keys(chain));o.push(w)}return o.join(' ')+'…'}
+const B={'+':(...a)=>a.reduce((x,y)=>x+y),'-':(a,...r)=>r.length?r.reduce((x,y)=>x-y,a):-a,'*':(...a)=>a.reduce((x,y)=>x*y),'/':(a,b)=>a/b,'%':(a,b)=>a%b,
+'<':(a,b)=>a<b,'>':(a,b)=>a>b,'<=':(a,b)=>a<=b,'>=':(a,b)=>a>=b,'=':(a,b)=>JSON.stringify(a)===JSON.stringify(b),yes:true,no:false,void:null,
+mist:(...a)=>a,head:l=>l[0]??null,tail:l=>l.slice(1),join:(x,l)=>[x,...l],size:l=>l.length,
+span:(a,b)=>Array.from({length:Math.max(0,b-a)},(_,i)=>a+i),
+gather:(f,l)=>l.map(x=>call(f,[x])),sift:(f,l)=>l.filter(x=>call(f,[x])===true),condense:(f,i,l)=>l.reduce((a,x)=>call(f,[a,x]),i),
+append:(a,b)=>[...a,...b],nth:(l,i)=>l[i]??null,rev:l=>[...l].reverse(),round:Math.round,abs:Math.abs,sqrt:Math.sqrt,floor:Math.floor,max:(...a)=>Math.max(...a),min:(...a)=>Math.min(...a),
+weld:(...a)=>a.map(x=>show(x,true)).join(''),
+neuron:(w,x,b=0)=>1/(1+Math.exp(-(w.reduce((s,wi,i)=>s+wi*x[i],0)+b))),dream,
+thunder:v=>{lines.push(show(v,true));return v}};
+let lines=[];
+function run(){lines=[];steps=0;out.className='';
+try{const g=new Env();for(const k in B)g.set(k,B[k]);const prog=parse(tok(src.value));let r=null;for(const x of prog)r=ev(x,g);
+out.textContent=lines.length?lines.join('\n'):(prog.length?'⇒ '+show(r,true):'')}
+catch(e){out.className='err';out.textContent=(lines.length?lines.join('\n')+'\n':'')+'☈ '+(e instanceof RangeError?'stack too deep':e.message)}}
+document.getElementById('run').onclick=run;
+src.addEventListener('keydown',e=>{if((e.ctrlKey||e.metaKey)&&e.key==='Enter'){e.preventDefault();run()}});
+
+const REF=[
+["Definitions",[
+["(cloud name value)","Binds a value to a name in the current scope.","(cloud x 5)","x → 5"],
+["(cloud (name args…) body)","Defines a named function with the given arguments.","(cloud (sq n) (* n n))","(sq 4) → 16"],
+["(drift (args…) body)","Creates an anonymous function (lambda).","((drift (x) (+ x 1)) 2)","→ 3"]]],
+["Control flow",[
+["(rain test then else)","If test is neither no nor void, evaluates then; otherwise else (optional).","(rain (< 1 2) \"a\" \"b\")","→ \"a\""],
+["(weave expr …)","Runs expressions in a fresh scope and returns the last result.","(weave (cloud a 2) (* a a))","→ 4"],
+["(flow value f g …)","Pipes a value through each function, left to right.","(flow 3 (drift (x) (* x 2)) (drift (x) (+ x 1)))","→ 7"]]],
+["Lists",[
+["(mist a b …)  or  [a b …]","Builds a list.","[1 2 3]","→ [1 2 3]"],
+["(span a b)","Integers from a up to, not including, b.","(span 1 4)","→ [1 2 3]"],
+["(gather f list)","Applies f to every item (map).","(gather (drift (x) (* x x)) [1 2 3])","→ [1 4 9]"],
+["(sift f list)","Keeps items for which f returns yes (filter).","(sift (drift (x) (> x 1)) [1 2 3])","→ [2 3]"],
+["(condense f init list)","Folds the list into one value, starting from init (reduce).","(condense + 0 [1 2 3])","→ 6"],
+["(head l)  (tail l)","First item, and everything after it.","(tail [1 2 3])","→ [2 3]"],
+["(join x l)  (append a b)","Prepend one item, or concatenate two lists.","(append [1] [2 3])","→ [1 2 3]"],
+["(nth l i)  (rev l)  (size l)","Item at index i (from 0), reversed copy, length.","(nth [7 8 9] 1)","→ 8"]]],
+["Math and logic",[
+["+  -  *  /  %","Arithmetic. + - * accept many arguments; % is remainder.","(+ 1 2 3)","→ 6"],
+["<  >  <=  >=  =","Comparison; = compares lists structurally. Returns yes or no.","(= [1 2] [1 2])","→ yes"],
+["yes  no  void","Truth values and the empty value.","(rain no 1 2)","→ 2"],
+["round  abs  sqrt  floor  max  min","Standard numeric helpers.","(max 3 9 4)","→ 9"]]],
+["Output and text",[
+["(thunder value)","Prints a value to the output pane and returns it.","(thunder \"hi\")","hi"],
+["(weld a b …)","Joins any values together as text.","(weld \"n=\" 5)","→ \"n=5\""]]],
+["Artificial intelligence",[
+["(neuron weights inputs bias)","One sigmoid neuron: 1 / (1 + e^-(Σ w·x + b)). Result between 0 and 1.","(neuron [1 1] [0 0] 0)","→ 0.5"],
+["(dream \"seed\" n)","A tiny Markov-chain oracle: continues the seed with n words of weather-flavoured babble.","(dream \"the storm\" 6)","random each run"]]]];
+const refEl=document.getElementById('ref'),esc=t=>t.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+refEl.innerHTML=REF.map(([g,rows])=>'<h3>'+g+'</h3>'+rows.map(([sg,d,e,r])=>'<div class="cmd"><code class="sig">'+esc(sg)+'</code><div class="d">'+esc(d)+'</div><div class="ex"><code>'+esc(e)+'</code><i>'+esc(r)+'</i></div></div>').join('')).join('');
+const fname=document.getElementById('fname'),note=document.getElementById('note'),fi=document.getElementById('file');
+const say=t=>{note.textContent=t;setTimeout(()=>{if(note.textContent===t)note.textContent=''},4000)};
+async function load(f){try{src.value=await f.text();fname.textContent=f.name;run();say('opened '+f.name)}catch(e){out.className='err';out.textContent='☈ could not read that file'}}
+document.getElementById('open').onclick=()=>fi.click();
+fi.onchange=()=>{if(fi.files[0])load(fi.files[0]);fi.value=''};
+src.addEventListener('dragover',e=>e.preventDefault());
+src.addEventListener('drop',e=>{const f=e.dataTransfer&&e.dataTransfer.files[0];if(f){e.preventDefault();load(f)}});
+document.getElementById('save').onclick=async()=>{
+let d=null;try{d=window.claude?await claude.use('downloads'):null}catch(e){}
+if(!d){say('saving is not available in this view');return}
+const base=fname.textContent.replace(/(\.txt)?$/,'').replace(/\.nimbus$/i,'')||'main';
+for(const name of [base+'.nimbus',base+'.nimbus.txt']){
+try{await d.save({filename:name,data:src.value});say('save offered');return}
+catch(e){if(e&&e.code==='rejected_extension')continue;if(e&&e.code==='declined')return;say('could not save');return}}};
+src.value=EX.hello;run();
+</script></main></body></html>
