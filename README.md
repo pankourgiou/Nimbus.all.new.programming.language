@@ -1,0 +1,1 @@
+Download the .html and double click it and voila! An all new programming language functional, esoteric with some a.i. tricks, called Nimbus associated with .nimbus files. Experiment with it and enjoy!
